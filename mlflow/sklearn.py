@@ -305,7 +305,7 @@ def autolog():
                 deep_items = value.get_params().items()
                 out.update((key + '__' + k, val) for k, val in deep_items)
             out[key] = value
-        print(out)
+        print("Patch Successful")
         return out
     settings = gorilla.Settings(allow_hit=True, store_hit=True)
     gorilla.apply(gorilla.Patch(sklearn.base.BaseEstimator, 'get_params', get_params, settings=settings))
