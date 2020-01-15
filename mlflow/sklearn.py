@@ -34,7 +34,8 @@ SUPPORTED_SERIALIZATION_FORMATS = [
     SERIALIZATION_FORMAT_PICKLE,
     SERIALIZATION_FORMAT_CLOUDPICKLE
 ]
-
+def test():
+    print("it's working")
 
 def get_default_conda_env(include_cloudpickle=False):
     """
