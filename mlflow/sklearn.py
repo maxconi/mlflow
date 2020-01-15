@@ -36,6 +36,7 @@ SUPPORTED_SERIALIZATION_FORMATS = [
 ]
 def test():
     print("it's working")
+    print("test")
 
 def get_default_conda_env(include_cloudpickle=False):
     """
