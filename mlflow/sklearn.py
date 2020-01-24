@@ -273,40 +273,36 @@ def load_model(model_uri):
     sklearn_model_artifacts_path = os.path.join(local_model_path, flavor_conf['pickled_model'])
     return _load_model_from_local_file(path=sklearn_model_artifacts_path)
 
+#This import is needed for get_sklearn_estimators_1() to find all sklearn estimators
+from sklearn import *
 
+#this function patches sklearn estimators at runtime
 def autolog():
     import sklearn
-    @gorilla.patch(sklearn.base.BaseEstimator)
-    def get_params(self, deep=True):
-        """
-        Get parameters for this estimator.
-        Parameters
-        ----------
-        deep : bool, default=True
-            If True, will return the parameters for this estimator and
-            contained subobjects that are estimators.
-        Returns
-        -------
-        params : mapping of string to any
-            Parameter names mapped to their values.
-        """
-        out = dict()
-        for key in self._get_param_names():
-            try:
-                value = getattr(self, key)
-            except AttributeError:
-                warnings.warn('From version 0.24, get_params will raise an '
-                              'AttributeError if a parameter cannot be '
-                              'retrieved as an instance attribute. Previously '
-                              'it would return None.',
-                              FutureWarning)
-                value = None
-            if deep and hasattr(value, 'get_params'):
-                deep_items = value.get_params().items()
-                out.update((key + '__' + k, val) for k, val in deep_items)
-            out[key] = value
-        print("Patch Successful")
-        return out
-    settings = gorilla.Settings(allow_hit=True, store_hit=True)
-    gorilla.apply(gorilla.Patch(sklearn.base.BaseEstimator, 'get_params', get_params, settings=settings))
+    import inspect
+    import sys
+
+    #Find all subclasses with a "fit" method inheriting from a class passed as argument
+    def get_sklearn_estimators_1(cls):
+        return set(cls.__subclasses__()).union(
+            [s for c in cls.__subclasses__() for s in get_sklearn_estimators_1(c) if hasattr(s, 'fit')])
+
+    #Find all sklearn classes with a "fit" method in the current module
+    def get_sklearn_estimators_2():
+        return [x[1] for x in inspect.getmembers(sys.modules[__name__], inspect.isclass)
+                if getattr(x[1], '__module__', None).split('.')[0] == sklearn.__name__
+                and hasattr(x[1], 'fit')]
+
+    #Patches the "fit" method of any sklearn estimator passed as argument
+    def patch_estimator(estimator):
+        settings = gorilla.Settings(allow_hit=True, store_hit=True)
+        @gorilla.patch(estimator)
+        def fit(self):
+            print("patching succeded")
+        gorilla.apply(gorilla.Patch(estimator, 'fit', fit, settings=settings))
+
+    [patch_estimator(x) for x in get_sklearn_estimators_1(sklearn.base.BaseEstimator)]
+
+
+
 
